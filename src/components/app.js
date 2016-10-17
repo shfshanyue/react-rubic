@@ -55,6 +55,62 @@ const OPERATIONS = {
   }
 }
 
+/* eslint default-case: 0 */
+const getAxisByrotate = (point, transformAxis) => {
+  let info = { x: 'x', y: 'y', z: 'z' }
+
+  if (transformAxis === 'x') {
+    const time = point.rotateX % 90
+    switch (time % 4) {
+      case 1:
+      case -3:
+        info = { x: 'x', y: 'z', z: 'y-' }
+        break
+      case 2:
+      case -2:
+        info = { x: 'x', y: 'y-', z: 'z-' }
+        break
+      case 3:
+      case -1:
+        info = { x: 'x', y: 'z-', z: 'y' }
+        break
+    }
+  } else if (transformAxis === 'y') {
+    const time = point.rotateY % 90
+    switch (time % 4) {
+      case 1:
+      case -3:
+        info = { x: 'z', y: 'y', z: 'x-' }
+        break
+      case 2:
+      case -2:
+        info = { x: 'x-', y: 'y', z: 'z-' }
+        break
+      case 3:
+      case -1:
+        info = { x: 'z-', y: 'y', z: 'x' }
+        break
+    }
+  } else if (transformAxis === 'z') {
+    const time = point.rotateZ % 90
+    switch (time % 4) {
+      case 1:
+      case -3:
+        info = { x: 'y', y: 'x-', z: 'z' }
+        break
+      case 2:
+      case -2:
+        info = { x: 'x-', y: 'y-', z: 'z' }
+        break
+      case 3:
+      case -1:
+        info = { x: 'y-', y: 'x', z: 'z' }
+        break
+    }
+  }
+  return info
+}
+
 
 class App extends Component {
   static propTypes = {
@@ -66,8 +122,7 @@ class App extends Component {
     super()
     this.state = {
       ipt: '',
-      currentAngle: '',
-      previousAngle: ''
+      currentAngle: ''
     }
     this.handleChange = this.handleChange.bind(this)
     this.handleSubmit = this.handleSubmit.bind(this)
@@ -83,7 +138,8 @@ class App extends Component {
           transform[i][j][k] = {
             rotateX: 0,
             rotateY: 0,
-            rotateZ: 0
+            rotateZ: 0,
+            coord: [i, j, k]
           }
         }
       }
@@ -93,77 +149,69 @@ class App extends Component {
     })
   }
 
+  // { currentAngle: L }: (1, 1, 1) -> (1, 1, 3)
   transformByOperation(x, y, z) {
-    const { currentAngle, previousAngle } = this.state
+    const { currentAngle } = this.state
+    let transformAxis = ''
 
-    switch (previousAngle && currentAngle) {
-      case 'L':
-      case 'R\'':
-      case 'M': {
-        [y, z] = TRANSFORM_CORRD_MAP[[y, z].join('')]
-        break
-      }
-      case 'L\'':
-      case 'R':
-      case 'M\'': {
-        [y, z] = TRANSFORM_CORRD_R_MAP[[y, z].join('')]
-        break
-      }
-      case 'U':
-      case 'E\'':
-      case 'D\'': {
-        [x, z] = TRANSFORM_CORRD_MAP[[x, z].join('')]
-        break
-      }
-      case 'U\'':
-      case 'E':
-      case 'D': {
-        [x, z] = TRANSFORM_CORRD_R_MAP[[x, z].join('')]
-        break
-      }
-      case 'B':
-      case 'F\'':
-      case 'S\'': {
-        [x, y] = TRANSFORM_CORRD_MAP[[x, y].join('')]
-        break
-      }
-      case 'B\'':
-      case 'F':
-      case 'S': {
-        [x, y] = TRANSFORM_CORRD_R_MAP[[x, y].join('')]
-        break
-      }
-      default:
-        break
+    if (currentAngle === '') {
+      return { x, y, z, transformAxis }
     }
-    return { x, y, z }
+
+    const letters = 'LMRUEDBSF'
+    const reverse = currentAngle.length === 2
+    const angle = currentAngle[0]
+
+    // axisIndex 找到 x,y,z 轴, pos 找到对应的操作
+    const index = letters.indexOf(angle)
+    const axisIndex = parseInt(index / 3, 10)
+    const pos = (index % 3) + 1
+    const map = reverse ? TRANSFORM_CORRD_MAP : TRANSFORM_CORRD_R_MAP
+
+    if (axisIndex === 0 && x === pos) {
+      [y, z] = map[[y, z].join('')]
+      transformAxis = 'x'
+    } else if (axisIndex === 1 && y === pos) {
+      [x, z] = map[[x, z].join('')]
+      transformAxis = 'y'
+    } else if (axisIndex === 2 && z === pos) {
+      [x, y] = map[[x, y].join('')]
+      transformAxis = 'z'
+    }
+    return { x, y, z, transformAxis }
   }
 
   rotate(dir) {
     const { transform } = this.state
     const reverse = /'/.test(dir)
     const newDir = reverse ? dir[0] : dir
-    const dirbase = reverse ? -1 : 1
-
+    const angleBase = reverse ? -1 : 1
     for (let i=1; i<4; i++) {
       for (let j=1; j<4; j++) {
         for (let k=1; k<4; k++) {
-          const axisMap = { X: i, Y: j, Z: k }
-          for (const axis of 'XYZ') {
-            const rotate = transform[i][j][k][`rotate${axis}`]
-            const operate = OPERATIONS[axis.toLowerCase()][axisMap[axis]]
-            const rotateInc = operate.base * dirbase * 90
+          const [i1, j1, k1] = transform[i][j][k].coord
+          const { x, y, z, transformAxis } = this.transformByOperation(i1, j1, k1)
+          const axisMap = { x, y, z }
 
-            transform[i][j][k][`rotate${axis}`] = newDir === operate.operate ? (rotate + rotateInc) : rotate
+          const info = getAxisByrotate(transform[i][j][k], transformAxis)
+
+          for (const axis of 'xyz') {
+            const { operate, base } = OPERATIONS[axis][axisMap[axis]]
+            const transformBase = info[axis].length === 2 ? -1 : 1
+            const rotateInc = base * angleBase * transformBase * 90
+
+            if (newDir === operate) {
+              transform[i][j][k][`rotate${info[axis][0].toUpperCase()}`] += rotateInc
+            }
           }
+          transform[i][j][k].coord = [x, y, z]
         }
       }
     }
-    this.setState(({ currentAngle }) => ({
+    this.setState({
       currentAngle: dir,
-      previousAngle: currentAngle,
       transform
-    }))
+    })
   }
 
   handleChange(event) {
@@ -171,8 +219,7 @@ class App extends Component {
     const re = new RegExp(`^([${LETTERS}]'?)*$`)
     if (re.test(value)) {
       this.setState({
-        ipt: event.target.value,
-        previousAngle: ''
+        ipt: event.target.value
       })
     }
   }
