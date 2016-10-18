@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 
+import Cube from './cube'
 import { zip, dict, permutation } from '../utils'
 import './app.scss'
 
@@ -241,24 +242,6 @@ class App extends Component {
     })
   }
 
-  renderFaces(x, y, z) {
-    const { order } = this.props
-
-    const isFirst = n => n === 1
-    const isLast = n => n === order
-
-    return (
-      <div className={`piece piece-${x}-${y}-${z}`}>
-        <div className={`face face-left   ${isFirst(x) ? '' : 'face-inside'}`} />
-        <div className={`face face-right  ${isLast(x) ? '' : 'face-inside'}`} />
-        <div className={`face face-up     ${isFirst(y) ? '' : 'face-inside'}`} />
-        <div className={`face face-down   ${isLast(y) ? '' : 'face-inside'}`} />
-        <div className={`face face-back   ${isFirst(z) ? '' : 'face-inside'}`} />
-        <div className={`face face-front  ${isLast(z) ? '' : 'face-inside'}`} />
-      </div>
-    )
-  }
-
   renderPieces() {
     const { order, animationEnabled } = this.props
     const { transform } = this.state
@@ -283,7 +266,7 @@ class App extends Component {
             key={`${x}-${y}-${z}`}
             style={style}
           >
-            { this.renderFaces(x, y, z) }
+            <Cube coordinate={{ x, y, z }} level={order} />
           </div>
         )
       })
