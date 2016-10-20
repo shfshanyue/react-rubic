@@ -57,15 +57,16 @@ const OPERATIONS = {
 }
 
 /* eslint default-case: 0 */
-const getAxisByrotate = (point, transformAxis) => {
+// (1, 1, 1), 'x' ->
+const getAxisByRotate = (point, transformAxis) => {
   let info = { x: 'x', y: 'y', z: 'z' }
 
   if (transformAxis === 'x') {
-    const time = point.rotateX % 90
+    const time = point.rotateX / 90
     switch (time % 4) {
       case 1:
       case -3:
-        info = { x: 'x', y: 'z', z: 'y-' }
+        info = { x: 'x', y: 'z-', z: 'y' }
         break
       case 2:
       case -2:
@@ -73,11 +74,11 @@ const getAxisByrotate = (point, transformAxis) => {
         break
       case 3:
       case -1:
-        info = { x: 'x', y: 'z-', z: 'y' }
+        info = { x: 'x', y: 'z', z: 'y-' }
         break
     }
   } else if (transformAxis === 'y') {
-    const time = point.rotateY % 90
+    const time = point.rotateY / 90
     switch (time % 4) {
       case 1:
       case -3:
@@ -93,19 +94,19 @@ const getAxisByrotate = (point, transformAxis) => {
         break
     }
   } else if (transformAxis === 'z') {
-    const time = point.rotateZ % 90
+    const time = point.rotateZ / 90
     switch (time % 4) {
       case 1:
       case -3:
-        info = { x: 'y', y: 'x-', z: 'z' }
+        info = { x: 'x', y: 'y', z: 'z' }
         break
       case 2:
       case -2:
-        info = { x: 'x-', y: 'y-', z: 'z' }
+        info = { x: 'y-', y: 'x-', z: 'z' }
         break
       case 3:
       case -1:
-        info = { x: 'y-', y: 'x', z: 'z' }
+        info = { x: 'x-', y: 'x-', z: 'z' }
         break
     }
   }
@@ -153,31 +154,29 @@ class App extends Component {
   // { currentAngle: L }: (1, 1, 1) -> (1, 1, 3)
   transformByOperation(x, y, z) {
     const { currentAngle } = this.state
-    let transformAxis = ''
 
     if (currentAngle === '') {
-      return { x, y, z, transformAxis }
+      return { x, y, z }
     }
 
     const letters = 'LMRUEDBSF'
-    const reverse = currentAngle.length === 2
+    const reverse = currentAngle.length === 2 ? -1 : 1
     const angle = currentAngle[0]
 
     // axisIndex 找到 x,y,z 轴, pos 找到对应的操作
     const index = letters.indexOf(angle)
     const axisIndex = parseInt(index / 3, 10)
     const pos = (index % 3) + 1
-    const map = reverse ? TRANSFORM_CORRD_MAP : TRANSFORM_CORRD_R_MAP
+    const transformAxis = 'xyz'[axisIndex]
+
+    const map = reverse * OPERATIONS[transformAxis][pos].base === -1 ? TRANSFORM_CORRD_R_MAP : TRANSFORM_CORRD_MAP
 
     if (axisIndex === 0 && x === pos) {
       [y, z] = map[[y, z].join('')]
-      transformAxis = 'x'
     } else if (axisIndex === 1 && y === pos) {
       [x, z] = map[[x, z].join('')]
-      transformAxis = 'y'
     } else if (axisIndex === 2 && z === pos) {
       [x, y] = map[[x, y].join('')]
-      transformAxis = 'z'
     }
     return { x, y, z, transformAxis }
   }
@@ -194,12 +193,13 @@ class App extends Component {
           const { x, y, z, transformAxis } = this.transformByOperation(i1, j1, k1)
           const axisMap = { x, y, z }
 
-          const info = getAxisByrotate(transform[i][j][k], transformAxis)
+          // 对改变的坐标找到对应的操作 ie. U -> F
+          const info = getAxisByRotate(transform[i][j][k], transformAxis)
 
           for (const axis of 'xyz') {
             const { operate, base } = OPERATIONS[axis][axisMap[axis]]
             const transformBase = info[axis].length === 2 ? -1 : 1
-            const rotateInc = base * angleBase * transformBase * 90
+            const rotateInc = angleBase * transformBase * base * 90
 
             if (newDir === operate) {
               transform[i][j][k][`rotate${info[axis][0].toUpperCase()}`] += rotateInc

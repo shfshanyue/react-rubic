@@ -3,7 +3,7 @@ import React, { PropTypes } from 'react'
 
 function Cube({ coordinate: { x, y, z }, level }) {
   return (
-    <div className={`piece piece-${x}-${y}-${z}`}>
+    <div className={`piece piece-${x}-${y}-${z}`} style={{'text-align': 'center'}}>
       <div className={`face face-left   ${x === 1 ? '' : 'face-inside'}`} />
       <div className={`face face-right  ${x === level ? '' : 'face-inside'}`} />
       <div className={`face face-up     ${y === 1 ? '' : 'face-inside'}`} />
